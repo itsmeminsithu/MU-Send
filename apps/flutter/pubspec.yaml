@@ -1,0 +1,21 @@
+name: mu_send
+description: "MU Send — a phone-to-phone messenger with no account and no server."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_webrtc: ^0.11.7   # the online P2P spine (data channel)
+  qr_flutter: ^4.1.0        # show the pairing QR
+  mobile_scanner: ^5.2.3    # scan the pairing QR
+  file_picker: ^8.1.2       # attach a photo / file
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

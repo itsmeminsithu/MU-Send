@@ -1,0 +1,23 @@
+name: MuSend
+options:
+  bundleIdPrefix: org.minsithu
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  MuSend:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: web
+        type: folder          # folder reference: keeps web/index.html + web/vendor/ intact
+    info:
+      path: Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.minsithu.musend
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"

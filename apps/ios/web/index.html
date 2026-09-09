@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MU Send</title>
+<script src="vendor/pako.min.js"></script>
+<script src="vendor/qrcode.min.js"></script>
+<script src="vendor/jsQR.js"></script>
+<style>
+  :root{
+    --bg:#EDF1EF; --surface:#FFFFFF; --ink:#16211E; --muted:#5C6B66;
+    --teal:#0F9E74; --teal-d:#0B5E44; --teal-t:#E2F3EC;
+    --violet:#5B4FC4; --violet-d:#332B7A; --violet-t:#ECE9FA;
+    --amber:#C07D18; --amber-t:#FAEFD8;
+    --line:#D9E0DC; --bubble:#EFF2F0;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Inter",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  #app{max-width:480px; margin:0 auto; height:100dvh; background:var(--surface);
+    display:flex; flex-direction:column; position:relative;
+    box-shadow:0 0 60px rgba(16,42,34,.10)}
+  .screen{display:none; flex-direction:column; flex:1; min-height:0}
+  .screen.active{display:flex}
+  h1,h2,h3{font-family:"Sora",sans-serif; margin:0; letter-spacing:-0.02em}
+  button{font-family:inherit; cursor:pointer; border:none}
+  .muted{color:var(--muted)} .small{font-size:.85rem}
+  .pad{padding:22px}
+
+  /* connect */
+  #s-connect{align-items:stretch; justify-content:center; text-align:center; padding:28px}
+  .radarmark{width:150px;height:150px;margin:0 auto 6px;position:relative}
+  .radarmark svg{width:100%;height:100%}
+  .ring{fill:none;stroke:var(--teal);stroke-width:1.4;opacity:.4}
+  .sweep{transform-origin:75px 75px}
+  @media(prefers-reduced-motion:no-preference){.sweep{animation:spin 5s linear infinite}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .wordmark{font-size:2.6rem;font-weight:700;margin-top:2px}
+  .tagline{color:var(--muted);margin:6px 0 26px;font-size:1.02rem}
+  .namefield{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;
+    font-family:inherit;font-size:1rem;color:var(--ink);margin-bottom:18px;background:var(--surface)}
+  .namefield:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:transparent}
+  .actions{display:flex;gap:12px}
+  .act{flex:1;padding:18px 12px;border-radius:16px;font-family:"Sora",sans-serif;font-weight:600;
+    font-size:1.05rem;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .act .sub{font-family:"Inter";font-weight:400;font-size:.78rem;opacity:.85}
+  .act.send{background:var(--teal);color:#fff}
+  .act.receive{background:var(--violet-t);color:var(--violet-d);border:1px solid var(--violet)}
+  .act svg{width:26px;height:26px}
+  .hint{margin-top:22px;font-size:.82rem;color:var(--muted);line-height:1.55}
+
+  /* generic header */
+  .bar{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);
+    flex:none;background:var(--surface)}
+  .bar h2{font-size:1.1rem;font-weight:600}
+  .back{background:none;font-size:1.4rem;color:var(--ink);padding:0 4px;line-height:1}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.on{background:var(--teal);box-shadow:0 0 0 3px var(--teal-t)}
+  .dot.wait{background:var(--amber);box-shadow:0 0 0 3px var(--amber-t)}
+  .grow{flex:1}
+  .scroll{flex:1;overflow-y:auto;min-height:0}
+
+  /* showcode */
+  .step{color:var(--muted);font-size:.9rem;line-height:1.5;margin:0 0 16px}
+  .qrbox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;
+    width:252px;height:252px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center}
+  .qrbox img,.qrbox canvas{display:block}
+  .codearea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 13px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.72rem;color:var(--muted);
+    background:var(--bg);resize:none;height:70px;word-break:break-all}
+  .row{display:flex;gap:10px;margin-top:12px}
+  .btn{flex:1;padding:13px;border-radius:12px;font-family:"Sora";font-weight:600;font-size:.98rem}
+  .btn.primary{background:var(--teal);color:#fff}
+  .btn.ghost{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+  .waitline{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:16px;
+    color:var(--amber);font-size:.9rem;font-weight:500}
+
+  /* scanner */
+  #scanvid{width:100%;border-radius:16px;background:#000;aspect-ratio:1/1;object-fit:cover}
+  #scancanvas{display:none}
+  .camstatus{text-align:center;color:var(--muted);font-size:.88rem;margin:12px 0}
+
+  /* chat */
+  #chatlog{padding:16px;display:flex;flex-direction:column;gap:8px}
+  .msg{max-width:78%;padding:9px 13px;border-radius:16px;font-size:.96rem;line-height:1.4;
+    word-wrap:break-word;white-space:pre-wrap}
+  .msg.them{align-self:flex-start;background:var(--bubble);border-bottom-left-radius:5px}
+  .msg.me{align-self:flex-end;background:var(--teal);color:#fff;border-bottom-right-radius:5px}
+  .msg img{max-width:100%;border-radius:10px;margin:2px 0 0;display:block}
+  .msg a{color:inherit;font-weight:600;text-decoration:underline}
+  .filechip{display:flex;align-items:center;gap:9px}
+  .filechip .fi{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.25);
+    display:flex;align-items:center;justify-content:center;flex:none;font-size:1rem}
+  .msg.them .filechip .fi{background:#fff}
+  .sys{align-self:center;background:var(--bg);color:var(--muted);font-size:.8rem;padding:5px 12px;
+    border-radius:20px;margin:4px 0}
+  .composer{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);flex:none}
+  .composer input[type=text]{flex:1;padding:12px 15px;border:1px solid var(--line);border-radius:22px;
+    font-family:inherit;font-size:1rem;background:var(--bg)}
+  .composer input[type=text]:focus{outline:2px solid var(--teal);outline-offset:0;border-color:transparent}
+  .iconbtn{width:44px;height:44px;border-radius:50%;background:var(--bg);display:flex;
+    align-items:center;justify-content:center;flex:none}
+  .iconbtn.go{background:var(--teal)}
+  .iconbtn svg{width:20px;height:20px}
+  .emptychat{margin:auto;text-align:center;color:var(--muted);padding:30px;font-size:.9rem}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- CONNECT -->
+  <section id="s-connect" class="screen active">
+    <div class="radarmark">
+      <svg viewBox="0 0 150 150" aria-hidden="true">
+        <circle class="ring" cx="75" cy="75" r="24"/>
+        <circle class="ring" cx="75" cy="75" r="46"/>
+        <circle class="ring" cx="75" cy="75" r="68"/>
+        <g class="sweep"><line x1="75" y1="75" x2="75" y2="9" stroke="#0F9E74" stroke-width="2"/></g>
+        <circle cx="75" cy="75" r="4.5" fill="#0F9E74"/>
+        <circle cx="118" cy="52" r="5" fill="#0F9E74"/>
+        <circle cx="44" cy="112" r="5" fill="#C07D18"/>
+      </svg>
+    </div>
+    <div class="wordmark">MU Send</div>
+    <div class="tagline">Chat phone to phone. No account, no server.</div>
+    <input id="name" class="namefield" placeholder="Your name" maxlength="24" autocomplete="off">
+    <div class="actions">
+      <button class="act send" id="btn-send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v13H5.2L4 19.5V4z"/><path d="M8 9h8M8 12.5h5"/></svg>
+        Send
+        <span class="sub">show your code</span>
+      </button>
+      <button class="act receive" id="btn-receive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#5B4FC4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path d="M14 14h3v3M20 14v.01M17 20h3M20 17v3"/></svg>
+        Receive
+        <span class="sub">scan their code</span>
+      </button>
+    </div>
+    <p class="hint">One of you taps <b>Send</b> and shows the code. The other taps <b>Receive</b> and scans it, then shows the reply back. That's it — you're connected, directly, phone to phone.</p>
+  </section>
+
+  <!-- SHOW CODE -->
+  <section id="s-showcode" class="screen">
+    <div class="bar"><button class="back" data-home>‹</button><h2 id="sc-title">Your code</h2></div>
+    <div class="scroll pad">
+      <p class="step" id="sc-step"></p>
+      <div class="qrbox"><div id="sc-qr"></div></div>
+      <textarea class="codearea" id="sc-code" readonly></textarea>
+      <div class="row">
+        <button class="btn ghost" id="sc-copy">Copy code</button>
+        <button class="btn primary" id="sc-next">Scan their reply</button>
+      </div>
+      <div class="waitline" id="sc-wait" style="display:none"><span class="dot wait"></span> waiting to connect…</div>
+    </div>
+  </section>
+
+  <!-- SCAN -->
+  <section id="s-scan" class="screen">
+    <div class="bar"><button class="back" data-home>‹</button><h2>Scan their code</h2></div>
+    <div class="scroll pad">
+      <video id="scanvid" playsinline muted></video>
+      <canvas id="scancanvas"></canvas>
+      <p class="camstatus" id="cam-status">Starting camera…</p>
+      <textarea class="codearea" id="paste-code" placeholder="…or paste the code here"></textarea>
+      <div class="row"><button class="btn primary" id="paste-use">Use pasted code</button></div>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="s-chat" class="screen">
+    <div class="bar">
+      <span class="dot" id="chat-dot"></span>
+      <h2 id="chat-peer">Connecting…</h2>
+      <span class="grow"></span>
+      <button class="back" data-home title="Leave">✕</button>
+    </div>
+    <div class="scroll" id="chatlog"><div class="emptychat" id="chat-empty">You're connected. Say hello 👋</div></div>
+    <div class="composer">
+      <button class="iconbtn" id="attach" title="Send a photo or file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#16211E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7L10 18"/></svg>
+      </button>
+      <input type="text" id="msg" placeholder="Message" autocomplete="off">
+      <button class="iconbtn go" id="send-msg" title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-3-6-7-2z"/></svg>
+      </button>
+    </div>
+    <input type="file" id="filepick" hidden>
+  </section>
+
+</div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const rid = () => Math.random().toString(36).slice(2,10);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $('#'+id).classList.add('active'); }
+function bytesToB64(b){ let s=''; const c=0x8000; for(let i=0;i<b.length;i+=c) s+=String.fromCharCode.apply(null,b.subarray(i,i+c)); return btoa(s); }
+function b64ToBytes(b){ const bin=atob(b); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+function fmtSize(n){ if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+
+// ---- serverless SDP <-> short code ----
+function encodeSDP(desc){ const j=JSON.stringify({t:desc.type,s:desc.sdp}); return 'MU1'+bytesToB64(pako.deflate(j)); }
+function decodeSDP(code){ code=code.trim(); if(code.startsWith('MU1')) code=code.slice(3); const o=JSON.parse(pako.inflate(b64ToBytes(code),{to:'string'})); return {type:o.t,sdp:o.s}; }
+
+// ---- Transport: the swappable layer (WebRTC data channel) ----
+class Transport {
+  constructor(){
+    this.pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+    this.dc = null; this.onData=()=>{}; this.onState=()=>{};
+    this.pc.onconnectionstatechange = ()=>{ const st=this.pc.connectionState; if(st==='failed'||st==='disconnected') this.onState('lost'); };
+  }
+  _wire(dc){ this.dc=dc; dc.binaryType='arraybuffer';
+    dc.onopen=()=>this.onState('open'); dc.onclose=()=>this.onState('closed'); dc.onmessage=e=>this.onData(e.data); }
+  _ice(){ return new Promise(res=>{ if(this.pc.iceGatheringState==='complete') return res();
+    const chk=()=>{ if(this.pc.iceGatheringState==='complete'){ this.pc.removeEventListener('icegatheringstatechange',chk); res(); } };
+    this.pc.addEventListener('icegatheringstatechange',chk); setTimeout(res,2500); }); }
+  async createInvite(){ this._wire(this.pc.createDataChannel('mu',{ordered:true}));
+    await this.pc.setLocalDescription(await this.pc.createOffer()); await this._ice(); return encodeSDP(this.pc.localDescription); }
+  async acceptInvite(code){ this.pc.ondatachannel=e=>this._wire(e.channel);
+    await this.pc.setRemoteDescription(decodeSDP(code));
+    await this.pc.setLocalDescription(await this.pc.createAnswer()); await this._ice(); return encodeSDP(this.pc.localDescription); }
+  async applyAnswer(code){ await this.pc.setRemoteDescription(decodeSDP(code)); }
+  send(str){ if(this.dc && this.dc.readyState==='open') this.dc.send(str); }
+  get buffered(){ return this.dc? this.dc.bufferedAmount:0; }
+  close(){ try{this.dc&&this.dc.close();}catch(e){} try{this.pc.close();}catch(e){} }
+}
+
+// ---- app state ----
+let transport=null, myName='You', peerName='Friend', entered=false;
+const incoming={};
+
+function resetHome(){ if(transport) transport.close(); transport=null; entered=false;
+  $('#chatlog').innerHTML='<div class="emptychat" id="chat-empty">You\'re connected. Say hello 👋</div>';
+  $('#sc-qr').innerHTML=''; $('#sc-code').value=''; $('#paste-code').value=''; stopScanner(); showScreen('s-connect'); }
+document.querySelectorAll('[data-home]').forEach(b=>b.onclick=resetHome);
+
+function wire(){ transport.onState=st=>{
+  if(st==='open') enterChat();
+  else if(st==='lost'||st==='closed'){ if(entered){ addSys('Disconnected'); $('#chat-dot').className='dot'; $('#chat-peer').textContent='Disconnected'; } }
+}; transport.onData=onData; }
+
+// ---- render QR + code ----
+function renderCode(title, step, code, isInitiator){
+  $('#sc-title').textContent=title; $('#sc-step').textContent=step; $('#sc-code').value=code||'';
+  $('#sc-qr').innerHTML='';
+  if(code){ try{ const qr=qrcode(0,'L'); qr.addData(code); qr.make(); $('#sc-qr').innerHTML=qr.createSvgTag({cellSize:4,margin:2,scalable:true}); const _svg=$('#sc-qr').querySelector('svg'); if(_svg){_svg.setAttribute('width','220');_svg.setAttribute('height','220');} }
+    catch(e){ $('#sc-qr').innerHTML='<p class="muted small" style="padding:12px;text-align:center">This code is long — use “Copy code” and paste it on the other phone.</p>'; } }
+  $('#sc-next').style.display = isInitiator? 'block':'none';
+  $('#sc-wait').style.display = isInitiator? 'none':'flex';
+  showScreen('s-showcode');
+}
+
+// ---- flows ----
+$('#btn-send').onclick = async ()=>{
+  myName = ($('#name').value||'').trim() || 'You';
+  transport = new Transport(); wire();
+  renderCode('Your code','Generating…','',true);
+  try{ const code = await transport.createInvite();
+    renderCode('Your code','Show this to the other phone. When they show you a reply, tap “Scan their reply”.', code, true);
+  }catch(e){ alert('Could not start. '+e.message); resetHome(); }
+};
+$('#btn-receive').onclick = ()=>{
+  myName = ($('#name').value||'').trim() || 'You';
+  transport = new Transport(); wire();
+  startScanner(async code=>{
+    try{ const answer = await transport.acceptInvite(code);
+      renderCode('Your reply','Show this back to the first phone. You\'ll connect the moment they scan it.', answer, false);
+    }catch(e){ alert('That code didn\'t scan cleanly. Try again, or paste it.'); resetHome(); }
+  });
+};
+$('#sc-next').onclick = ()=> startScanner(async code=>{
+  try{ await transport.applyAnswer(code); renderCode('Connecting…','Linking the two phones…','',false); $('#sc-wait').style.display='flex'; }
+  catch(e){ alert('That reply didn\'t work. Try scanning again.'); }
+});
+$('#sc-copy').onclick = async ()=>{ const c=$('#sc-code').value; if(!c) return;
+  try{ await navigator.clipboard.writeText(c); $('#sc-copy').textContent='Copied ✓'; setTimeout(()=>$('#sc-copy').textContent='Copy code',1400); }
+  catch(e){ $('#sc-code').select(); document.execCommand('copy'); } };
+
+// ---- scanner ----
+let scanStream=null, scanCb=null, scanning=false;
+function startScanner(cb){ scanCb=cb; $('#paste-code').value=''; showScreen('s-scan');
+  const v=$('#scanvid'), cv=$('#scancanvas'), ctx=cv.getContext('2d'); $('#cam-status').textContent='Starting camera…';
+  navigator.mediaDevices?.getUserMedia({video:{facingMode:'environment'}}).then(st=>{
+    scanStream=st; v.srcObject=st; v.play(); scanning=true; $('#cam-status').textContent='Point at the other phone\'s QR code';
+    const loop=()=>{ if(!scanning) return;
+      if(v.readyState===v.HAVE_ENOUGH_DATA){ cv.width=v.videoWidth; cv.height=v.videoHeight; ctx.drawImage(v,0,0,cv.width,cv.height);
+        const img=ctx.getImageData(0,0,cv.width,cv.height); const r=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+        if(r&&r.data){ const d=r.data; stopScanner(); scanCb&&scanCb(d); return; } }
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }).catch(()=>{ $('#cam-status').textContent='Camera unavailable — paste the code below instead.'; });
+}
+function stopScanner(){ scanning=false; if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; } }
+$('#paste-use').onclick = ()=>{ const c=$('#paste-code').value.trim(); if(!c) return; stopScanner(); const cb=scanCb; scanCb=null; cb&&cb(c); };
+
+// ---- chat ----
+function enterChat(){ if(entered) return; entered=true; showScreen('s-chat');
+  $('#chat-dot').className='dot on'; $('#chat-peer').textContent=peerName;
+  transport.send(JSON.stringify({t:'hello',name:myName})); }
+function addSys(text){ const d=document.createElement('div'); d.className='sys'; d.textContent=text; $('#chatlog').appendChild(d); scrollDown(); }
+function scrollDown(){ const l=$('#chatlog'); l.scrollTop=l.scrollHeight; }
+function clearEmpty(){ const e=$('#chat-empty'); if(e) e.remove(); }
+function addText(body, mine){ clearEmpty(); const d=document.createElement('div'); d.className='msg '+(mine?'me':'them'); d.textContent=body; $('#chatlog').appendChild(d); scrollDown(); }
+function addFile(meta, url, mine){ clearEmpty(); const d=document.createElement('div'); d.className='msg '+(mine?'me':'them');
+  if((meta.mime||'').startsWith('image/')){ const img=document.createElement('img'); img.src=url; img.alt=meta.name; d.appendChild(img); }
+  else { const a=document.createElement('a'); a.href=url; a.download=meta.name; a.className='filechip';
+    a.innerHTML='<span class="fi">📄</span><span>'+meta.name+' · '+fmtSize(meta.size)+'</span>'; d.appendChild(a); }
+  $('#chatlog').appendChild(d); scrollDown(); }
+
+function onData(data){ if(typeof data!=='string') return; let m; try{ m=JSON.parse(data); }catch(e){ return; }
+  if(m.t==='hello'){ peerName=m.name||'Friend'; $('#chat-peer').textContent=peerName; }
+  else if(m.t==='text'){ addText(m.body,false); }
+  else if(m.t==='fstart'){ incoming[m.id]={meta:m,parts:new Array(m.total)}; }
+  else if(m.t==='fchunk'){ const r=incoming[m.id]; if(r) r.parts[m.seq]=m.d; }
+  else if(m.t==='fend'){ const r=incoming[m.id]; if(!r) return; const bytes=b64ToBytes(r.parts.join(''));
+    const blob=new Blob([bytes],{type:r.meta.mime}); addFile(r.meta,URL.createObjectURL(blob),false); delete incoming[m.id]; }
+}
+function sendText(){ const i=$('#msg'); const body=i.value.trim(); if(!body||!transport) return;
+  transport.send(JSON.stringify({t:'text',id:rid(),ts:Date.now(),body})); addText(body,true); i.value=''; i.focus(); }
+$('#send-msg').onclick=sendText;
+$('#msg').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); sendText(); }});
+$('#attach').onclick=()=>$('#filepick').click();
+$('#filepick').onchange=async e=>{ const f=e.target.files[0]; e.target.value=''; if(!f||!transport) return;
+  const id=rid(), b64=bytesToB64(new Uint8Array(await f.arrayBuffer())), CH=8000, total=Math.ceil(b64.length/CH)||1;
+  transport.send(JSON.stringify({t:'fstart',id,name:f.name,mime:f.type||'application/octet-stream',size:f.size,total}));
+  for(let i=0;i<total;i++){ while(transport.buffered>262144) await sleep(24);
+    transport.send(JSON.stringify({t:'fchunk',id,seq:i,d:b64.slice(i*CH,(i+1)*CH)})); }
+  transport.send(JSON.stringify({t:'fend',id}));
+  addFile({name:f.name,mime:f.type,size:f.size}, URL.createObjectURL(f), true);
+};
+</script>
+</body>
+</html>
