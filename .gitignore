@@ -1,0 +1,21 @@
+.DS_Store
+Thumbs.db
+*.log
+.env
+node_modules/
+.idea/
+.vscode/
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+# Android / Gradle
+.gradle/
+local.properties
+apps/android/.gradle/
+apps/android/local.properties
+*.iml
+# Python
+__pycache__/
+*.pyc
