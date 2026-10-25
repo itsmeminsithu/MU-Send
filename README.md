@@ -49,3 +49,21 @@ live on the Flutter/native path — see `docs/BUILD_PLAN.md`.
 
 ## License
 MIT — see [LICENSE](LICENSE).
+
+## Live preview
+
+The web app in `web/` is genuinely static: `web/index.html` plus vendored
+JS, with serverless pairing (the connection code is exchanged by QR code or
+paste, per `web/index.html` and `docs/ABOUT.md`) — no app server is needed.
+Local preview today, from the repo root:
+
+```
+cd web && python3 serve.py
+```
+
+GitHub Pages note: the Pages branch-folder setting only offers the repo
+root or `/docs` — it cannot point at `web/`. So this PR adds no Pages
+preview, and no preview URL is live from it. Post-merge option: manually
+add a Pages Actions workflow deploying `web/` via the GitHub web UI
+(workflow files cannot be pushed via the Muse GitHub App, so that step is
+not in this PR), or serve `web/` from any static host.
