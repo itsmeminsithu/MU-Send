@@ -1,14 +1,10 @@
 # MU Send
 
-A phone-to-phone messenger with **no account and no server**. Pair two phones by
-scanning each other's QR code, then chat and send photos and files directly,
-device to device — over the internet or the same Wi-Fi.
+MU Send is a phone-to-phone messenger. There is no account and no server. You pair two phones by scanning each other's QR code, then chat and send photos and files straight from one device to the other, over the internet or the same Wi-Fi.
 
 Built by **Min Sithu** (`devminsithu`) · id `org.minsithu.musend` · MIT licensed.
 
----
-
-## What's in here
+## Files
 
 ```
 mu-send/
@@ -26,16 +22,18 @@ mu-send/
     └── flutter/           cross-platform (Dart) — source scaffold
 ```
 
-## Quick start (web — no tools needed)
+## Run the web version
+
 ```
 cd web && python3 serve.py
 ```
-Open the printed `localhost` URL. To see a real chat you need it on a second
-device too — open the same app there and pair by scanning each other's codes.
 
-For Android, iOS, and Flutter builds, see **`docs/MANUAL.md`**.
+Open the `localhost` URL it prints. One device on its own is not enough to test a chat: open the same app on a second device and pair by scanning each other's codes.
 
-## Status
+Android, iOS and Flutter builds are in **`docs/MANUAL.md`**.
+
+## Where each build stands
+
 | Build | Stack | State |
 |-------|-------|-------|
 | Web | HTML + JS | Complete, runs today |
@@ -43,27 +41,18 @@ For Android, iOS, and Flutter builds, see **`docs/MANUAL.md`**.
 | iOS | Swift + WKWebView | Source + XcodeGen/manual setup |
 | Flutter | Dart | Source scaffold (`flutter create .` to build) |
 
-The web and WebView builds use the online WebRTC path. The native **offline**
-radios (Bluetooth, Wi-Fi Direct, Nearby/Multipeer) are the next milestone and
-live on the Flutter/native path — see `docs/BUILD_PLAN.md`.
+The web and WebView builds connect over WebRTC. The offline radios (Bluetooth, Wi-Fi Direct, Nearby/Multipeer) are not in yet. They are the next milestone, on the Flutter/native path — see `docs/BUILD_PLAN.md`.
 
-## License
-MIT — see [LICENSE](LICENSE).
+## About a live preview
 
-## Live preview
-
-The web app in `web/` is genuinely static: `web/index.html` plus vendored
-JS, with serverless pairing (the connection code is exchanged by QR code or
-paste, per `web/index.html` and `docs/ABOUT.md`) — no app server is needed.
-Local preview today, from the repo root:
+The web app is static: `web/index.html` plus vendored JS. Pairing is serverless — the connection code is swapped by QR code or paste (see `web/index.html` and `docs/ABOUT.md`) — so no app server is needed to run it locally:
 
 ```
 cd web && python3 serve.py
 ```
 
-GitHub Pages note: the Pages branch-folder setting only offers the repo
-root or `/docs` — it cannot point at `web/`. So this PR adds no Pages
-preview, and no preview URL is live from it. Post-merge option: manually
-add a Pages Actions workflow deploying `web/` via the GitHub web UI
-(workflow files cannot be pushed via the Muse GitHub App, so that step is
-not in this PR), or serve `web/` from any static host.
+There is no Pages preview for it here, and no preview URL is live. GitHub Pages can only serve the repo root or `/docs` with the branch-folder setting; it cannot point at `web/`. Options after merge: add a Pages Actions workflow that deploys `web/`, through the GitHub web UI (workflow files cannot be pushed via the Muse GitHub App, so that step is not in this PR), or serve `web/` from any static host.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
